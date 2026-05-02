@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ملف الإنجاز الرقمي | العرض التفاعلي</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --stage-bg: radial-gradient(circle at center, #1e293b 0%, #030712 100%);
+            --assistant-dark: rgba(15, 23, 42, 0.95);
+            --chat-area-light: #f8fafc;
+            --accent-color: #0ea5e9;
+            --shiny-gold: #fbbf24;
+            --sidebar-width: 400px;
+        }
+
+        body, html {
+            margin: 0; padding: 0; height: 100%; width: 100%;
+            font-family: 'Cairo', sans-serif;
+            background: var(--stage-bg);
+            overflow: hidden;
+        }
+
+        .app-viewport {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #smart-assistant {
+            position: fixed;
+            top: 20px;
+            bottom: 20px;
+            right: 20px;
+            width: var(--sidebar-width);
+            background: var(--assistant-dark);
+            backdrop-filter: blur(20px);
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: -15px 0 40px rgba(0,0,0,0.7);
+            display: flex;
+            flex-direction: column;
+            z-index: 1000;
+            overflow: hidden;
+            transition: all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        .assistant-hidden #smart-assistant {
+            opacity: 0;
+            transform: translateX(500px);
+            pointer-events: none;
+        }
+
+        .chat-area {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            background: var(--chat-area-light);
+            scroll-behavior: smooth;
+        }
+
+        .main-stage {
+            width: calc(95% - var(--sidebar-width));
+            height: 90vh;
+            background: #fff;
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            overflow: hidden;
+            transition: all 0.6s ease-in-out;
+            z-index: 10;
+            margin-right: calc(var(--sidebar-width) + 20px); 
+        }
+
+        .assistant-hidden .main-stage {
+            width: 95%;
+            margin-right: 0;
+        }
+
+        iframe { width: 100%; height: 100%; border: none; }
+
+        #floating-bot {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            width: 70px;
+            height: 70px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 30px;
+            cursor: pointer;
+            z-index: 5000;
+            box-shadow: 0 0 20px rgba(14, 165, 233, 0.5);
+        }
+
+        .assistant-header { padding: 15px; text-align: center; background: var(--assistant-dark); border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .message { padding: 14px; border-radius: 15px; font-size: 0.85rem; line-height: 1.6; animation: fadeIn 0.3s ease; }
+        .bot-msg { background: #fff; color: #1e293b; align-self: flex-start; border: 1px solid #e2e8f0; width: 92%; white-space: pre-line; }
+        .user-msg { background: var(--accent-color); color: white; align-self: flex-end; font-weight: bold; }
+
+        .action-tray { padding: 15px; display: flex; flex-direction: column; gap: 8px; background: var(--assistant-dark); max-height: 45%; overflow-y: auto; }
+        .quest-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            padding: 10px 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            text-align: right;
+            font-family: 'Cairo';
+            font-size: 12.5px;
+            transition: 0.3s;
+        }
+        .quest-btn:hover { background: var(--accent-color); }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<div id="floating-bot" onclick="toggleAssistant()">🤖</div>
+
+<div class="app-viewport">
+    <div class="main-stage">
+        <!-- تم تحديث الرابط هنا ليطابق ملفك الجديد مع تفعيل وضع المعاينة -->
+        <iframe src="https://drive.google.com/file/d/17UcQMdiXMML12iCTDBuCSLEfh5lNsPz1/preview"></iframe>
+    </div>
+
+    <div id="smart-assistant">
+        <div class="assistant-header">
+            <h3 style="margin:0; font-size: 18px; color:white;">المساعد الذكي</h3>
+            <p style="color:var(--shiny-gold); margin:5px 0 0; font-size: 12px;">انقر على السؤال لإظهار الإجابة الكاملة ✨</p>
+        </div>
+        
+        <div class="chat-area" id="chat-screen">
+            <div class="message bot-msg">مرحباً بكِ. يمكنكِ استعراض تفاصيل ملف الإنجاز من خلال اختيار الأسئلة أدناه.</div>
+        </div>
+
+        <div class="action-tray" id="button-list"></div>
+    </div>
+</div>
+
+<script>
+    function toggleAssistant() {
+        document.body.classList.toggle('assistant-hidden');
+    }
+
+    const questions = [
+        { 
+            q: "س1: ما هو دور المعلمة في تفعيل المناسبات الوطنية والبرامج الإذاعية والتوعوية؟", 
+            a: `الإجابة والتوثيق: تساهم المعلمة بفاعلية في تعزيز الانتماء الوطني والوعي المجتمعي من خلال:
+
+• المناسبات الوطنية: تفعيل يوم التأسيس السعودي ودمجه في الخطة الدراسية، والمشاركة المتميزة في اليوم الوطني السعودي 95 باستخدام أدوات الذكاء الاصطناعي لتصميم محتوى وطني مبتكر.
+
+• النشاط الإذاعي التوعوي: وثق ملف الإنجاز تنفيذ مجموعة من الإذاعات المدرسية النوعية، منها:
+- إذاعة السياحة في السعودية: (بوابة المملكة إلى العالم) كنشاط لاصفي يهدف لتعزيز مكانة المملكة السياحية.
+- إذاعة جائزة المستثمر الذكي: الإعلان عن الجائزة وإعداد تقرير مفصل حول "جائزة المستثمر الذكي الخليجي" لتعزيز الوعي المالي.
+- إذاعة الوعي المستنير: وترتبط بجهودها في مبادرات الوعي الرقمي والتربية الإعلامية والمسؤولية الرقمية المنشورة عبر الباركود [11، 47].
+- إذاعة ترشيد استهلاك المياه: ضمن برامج المسؤولية المجتمعية والتوعية البيئية الموثقة في سجل الأنشطة اللاصفية.
+
+• يوم المعلم: إعداد تقارير للاحتفاء بالمعلم وتذكير المجتمع بدوره الريادي.` 
+        },
+        { 
+            q: "س2: ما هي أبرز الشهادات في قائمة شهادات حضور الدورات؟", 
+            a: `حصلت المعلمة على مجموعة متنوعة من الشهادات المهنية والتقنية التي تعكس نموها المستمر، ومن أبرزها:
+
+• شهادة خبير مايكروسوفت للتعلم الإبداعي (MIE Expert) للأعوام 2025-2026 [2، 35، 46].
+• شهادة المدرب المقيم المعتمد في "ساعة برمجة" بالمدرسة.
+• مجموعة شهادات من المعهد الوطني للتطوير المهني التعليمي (NIEPD 0011, 0020, AI02, W058).
+• شهادة دورة "أدوات العرض التفاعلية الإلكترونية (Slido)".
+• شهادة دورة "الأنشطة الصفية لدمج مهارات التفكير في مقررات الحاسب".
+• شهادة دورة "البوربوينت التفاعلي مع أداة كلاس بوينت التفاعلية المطورة".
+• شهادة دورة "الرحلات المعرفية (WebQuest) في تدريس الحاسب الآلي".
+• شهادة دورة "تعليم المفاهيم البرمجية باستخدام الميكروبت (Micro:bit)".
+• شهادة دورة "تنمية الدافعية لرفع المستوى التحصيلي للطلبة".
+• شهادة دورة "حقيبة كفايات تدريس مقرر تقنية رقمية 1-2".` 
+        },
+        { 
+            q: "س3: كيف فعلت المعلمة التواصل مع ولي الأمر؟", 
+            a: `الإجابة: من خلال لقاءات رسمية وإرسال تقارير الأداء عبر منصة مدرستي، بالإضافة إلى مبادرة "الوعي الرقمي لأولياء الأمور" التي رفعت وعيهم التقني بنسبة 43%. يتمثل دور المعلمة هدى فالح الحربي مع أولياء الأمور في بناء شراكة استراتيجية متكاملة تهدف إلى تعزيز نواتج التعلم وحماية الطالبات رقمياً.
+
+ويمكن تلخيص دورها في:
+1. اللقاءات الفردية: استقبال الأمهات بالمدرسة لمناقشة مستويات الطالبات وتفعيل الخطط العلاجية.
+2. منصة مدرستي: إرسال تقارير الأداء الدورية وتزويدهم بالخطة التعليمية الأسبوعية.
+3. مبادرة الوعي الرقمي: تمكين أولياء الأمور من متابعة أبنائهم تقنياً ورفع مستوى الأمن الرقمي.
+4. المسؤولية الرقمية: نشر ثقافة التعامل الرقمي والتربية على المواطنة الرقمية الصالحة.` 
+        },
+        { 
+            q: "س4: كيف استخدمت المعلمة استراتيجيات التدريس الحديثة؟", 
+            a: `استخدمت المعلمة عدة استراتيجيات حديثة أبرزها:
+
+1. التمكين الرقمي بالذكاء الاصطناعي: تمكين الطالبات من إعداد أوراق عمل تفاعلية، واستخدام NotebookLM كمساعد ذكي للحوار حول المنهج، وتوظيفه في تلخيص الدروس وصناعة المحتوى.
+2. الذكاءات المتعددة: تصميم أنشطة تناسب الأنماط البصرية والسمعية والحركية.
+3. الفصل المقلوب: مشاهدة الفيديوهات التعليمية قبل الحصة وتخصيص وقت الدرس للنقاش.
+4. التعلم بالمشاريع: بناء تطبيقات MIT App Inventor وتصميم مواقع HTML.
+5. التعلم التعاوني: تقسيم الطالبات لمجموعات عمل مع دمج أدوات الذكاء الاصطناعي.
+6. الربط بالحياة وقراءة الصور: ربط الدروس بالواقع اليومي (مثل مفهوم الخصولية والبصمة الرقمية).
+
+الأدوات المساندة: ClassPoint, Kahoot, Slido, Mentimeter, AhaSlides.` 
+        }
+    ];
+
+    function drawButtons() {
+        const list = document.getElementById('button-list');
+        list.innerHTML = "";
+        questions.forEach((item, index) => {
+            const b = document.createElement('button');
+            b.className = 'quest-btn';
+            b.innerText = item.q;
+            b.onclick = () => selectQuest(index);
+            list.appendChild(b);
+        });
+    }
+
+    function selectQuest(idx) {
+        const chat = document.getElementById('chat-screen');
+        const item = questions[idx];
+        chat.innerHTML += `<div class="message user-msg">${item.q}</div>`;
+        questions.splice(idx, 1);
+        drawButtons();
+        setTimeout(() => {
+            chat.innerHTML += `<div class="message bot-msg">${item.a}</div>`;
+            chat.scrollTop = chat.scrollHeight;
+        }, 400);
+    }
+
+    drawButtons();
+</script>
+
+</body>
+</html>
